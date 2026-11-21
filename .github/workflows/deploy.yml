@@ -1,0 +1,97 @@
+
+# ========================================
+# 1. NAMA WORKFLOW
+# Mengatur proses deployment aplikasi ke GitHub Pages.
+# ========================================
+
+name: Deploy CHILL to GitHub Pages
+
+
+# ========================================
+# 2. TRIGGER
+# Menjalankan workflow setiap ada push ke branch main.
+# ========================================
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+
+# ========================================
+# 3. PERMISSIONS
+# Memberikan izin untuk membaca repository dan melakukan deployment.
+# ========================================
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+
+# ========================================
+# 4. CONCURRENCY
+# Mencegah deployment berjalan bersamaan.
+# ========================================
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+
+# ========================================
+# 5. JOBS
+# Mengatur proses build dan deployment aplikasi.
+# ========================================
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Mengambil kode dari repository.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Menyiapkan Node.js.
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Menginstal dependencies.
+      - name: Install dependencies
+        run: npm ci
+
+      # Menjalankan build Vite untuk GitHub Pages.
+      - name: Build project
+        run: npm run build
+        env:
+          GITHUB_PAGES: true
+
+      # Mengatur GitHub Pages artifact.
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      # Mengunggah hasil build dari folder dist.
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      # Menerbitkan hasil build ke GitHub Pages.
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
